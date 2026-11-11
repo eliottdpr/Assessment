@@ -16,12 +16,99 @@ def uv_vers_xy(u, v):
 
     return x, y
 
+def largage(i, h_cheminee, masse_cadeau, Cd, A):
+    """
+    pre:
+        i est l'indice de l'instant de largage dans les tableaux
+        de simulation (0 <= i < len(t_sim)).
+
+        h_cheminee est la hauteur de l'ouverture de la cheminée
+        par rapport au sol, en mètres.
+
+        masse_cadeau est la masse du cadeau en kg (> 0).
+        Cd est son coefficient de traînée (>= 0).
+        A est sa surface frontale en m² (>= 0).
+
+        Le cadeau est lâché sans propulsion.
+        On néglige le vent.
+
+    post:
+        Retourne (x_impact, temps_chute), soit la position
+        horizontale et le temps nécessaire au cadeau pour
+        atteindre la hauteur de la cheminée en descendant.
+
+        Retourne None si le cadeau part sous cette hauteur
+        ou si cette hauteur n'est pas atteinte dans les 10 s.
+    """
+
+    # Position initiale du cadeau
+    x = x_sim[i]
+    y = y_sim[i]
+
+    if y <= h_cheminee:
+        return None
+
+    # Vitesse initiale du cadeau
+    pente = b*u_sim[i] / (a**2*np.sqrt(1-u_sim[i]**2/a**2))
+    norme = np.sqrt(1+pente**2)
+
+    vitesse_u = vitesse_sim[i] / norme
+
+    vx = vitesse_u*(np.cos(alpha)-pente*np.sin(alpha))
+    vy = vitesse_u*(np.sin(alpha)+pente*np.cos(alpha))
+
+    # Paramètres de chute
+    rho = 1.2
+    dt = step
+    temps = 0
+    x_cadeau = [x]
+    y_cadeau = [y]
+    while temps < 10:
+
+        # Vitesse totale
+        V = np.sqrt(vx**2 + vy**2)
+
+        # Accélérations avec frottement de l'air
+        k_air = 0.5*rho*Cd*A/masse_cadeau
+
+        ax = -k_air*V*vx
+        ay = -g-k_air*V*vy
+
+        # Méthode d'Euler
+        x_suivant = x + vx*dt
+        y_suivant = y + vy*dt
+
+        vx = vx + ax*dt
+        vy = vy + ay*dt
+
+        # Le cadeau atteint la hauteur de la cheminée
+                # Le cadeau atteint l'ouverture de la cheminée
+        if y_suivant <= h_cheminee:
+            fraction = (y-h_cheminee)/(y-y_suivant)
+            x_impact = x + fraction*(x_suivant-x)
+            temps_chute = temps + fraction*dt
+
+            x_cadeau.append(x_impact)
+            y_cadeau.append(h_cheminee)
+
+            return x_impact, temps_chute, x_cadeau, y_cadeau
+
+        # Enregistrement de la nouvelle position
+        x_cadeau.append(x_suivant)
+        y_cadeau.append(y_suivant)
+
+        x = x_suivant
+        y = y_suivant
+        temps += dt
+
+    return None
+
 ### Constantes
 g = 9.81
 
 ### Paramètres du système
-m = 0.1
-mu = 0.03
+m = 3 # masse du téléphérique [kg]
+mu = 0.2   # coefficient de l'ensemble des frottements [N/(m/s)]
 
 h1 = 6.75
 h2 = 4
@@ -95,6 +182,11 @@ v_sim = -b*np.sqrt(1-u_sim**2/a**2)
 
 x_sim, y_sim = uv_vers_xy(u_sim, v_sim)
 
+### Calcul des énergies
+
+E_cinetique = 0.5 * m * vitesse_sim**2
+E_potentielle = m * g * y_sim
+E_mecanique = E_cinetique + E_potentielle
 ### Graphique de la trajectoire
 plt.plot(x_sim, y_sim)
 plt.scatter([0, d], [h1, h2], label="Ancrages")
@@ -119,3 +211,17 @@ plt.ylabel("Accélération tangentielle [m/s²]")
 plt.title("Évolution de l'accélération du téléphérique")
 plt.grid()
 plt.show()
+### Graphique des énergies
+
+plt.plot(t_sim, E_cinetique, label="Énergie cinétique")
+plt.plot(t_sim, E_potentielle, label="Énergie potentielle")
+plt.plot(t_sim, E_mecanique, label="Énergie mécanique")
+
+plt.xlabel("Temps [s]")
+plt.ylabel("Énergie [J]")
+plt.title("Évolution des énergies du téléphérique")
+plt.legend()
+plt.grid()
+plt.show()
+
+
