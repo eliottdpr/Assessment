@@ -85,7 +85,7 @@ for i in range(len(t)-1):
     if x_suivant >= x_arrivee:
         n = i + 2
         break
-
+acceleration[n-1] = acceleration[n-2]
 
 t_sim = t[:n]
 u_sim = u[:n]
@@ -110,5 +110,12 @@ plt.plot(t_sim, vitesse_sim)
 plt.xlabel("Temps [s]")
 plt.ylabel("Vitesse tangentielle [m/s]")
 plt.title("Évolution de la vitesse")
+plt.grid()
+plt.show()
+### Graphique de l'accélération
+plt.plot(t_sim, acceleration[:n])
+plt.xlabel("Temps [s]")
+plt.ylabel("Accélération tangentielle [m/s²]")
+plt.title("Évolution de l'accélération du téléphérique")
 plt.grid()
 plt.show()
